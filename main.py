@@ -1,6 +1,5 @@
 import random
-
-#class repersents tic-tac-toe game
+import copy
 class ticTacToeGame:
     def __init__(self, turn):
 
@@ -29,10 +28,10 @@ class ticTacToeGame:
         assert loc in self.possible_moves()
 
         if self.turn == 1:
-            marker = 'O'
+            marker = 'X'
             self.turn = 0
         else:
-            marker ='X'
+            marker ='O'
             self.turn = 1
 
         self.map[loc[0]][loc[1]] = marker
@@ -63,6 +62,71 @@ class ticTacToeGame:
         else:
             return 3
 
+def pMCTS(game, simPlayer=False):
+
+    #simPlayer is used to flip win/lose for simulating player
+
+    numPlayouts = 2000
+    possible_moves = game.possible_moves()
+    results = []
+    originalGame = game
+
+    #simulate all possible moves
+    for pMove in possible_moves:
+
+        result = {
+            'move': pMove,
+            'wins': 0,
+            'draws': 0,
+            'losses': 0
+        }
+
+        possibleGame = copy.deepcopy(originalGame)
+        possibleGame.move(pMove)
+
+        for i in range(numPlayouts):
+
+            #random game playout
+            randomGame = copy.deepcopy(possibleGame)
+            while randomGame.get_status() == 3:
+                rMoves = randomGame.possible_moves()
+                randomGame.move(rMoves[random.randint(0,len(rMoves)-1)])
+
+            #record run 
+            status = randomGame.get_status()
+            if status == 0:
+                if simPlayer:
+                    result['wins'] = result['wins'] + 1
+                else:
+                    result['losses'] = result['losses'] + 1
+            if status == 1:
+                if simPlayer:
+                    result['losses'] = result['losses'] + 1
+                else:
+                    result['wins'] = result['wins'] + 1
+            if status == 2:
+                result['draws'] = result['draws'] + 1
+
+        results.append(result)
+
+    #select best move, compute score 
+    maxI = 0
+    for i in range(len(possible_moves)): 
+        a = 1
+        b = .999
+        c = 0
+        results[i]['score'] = (a*results[i]['wins'] + b*results[i]['draws'] + c*results[i]['losses'])/(results[i]['wins'] + results[i]['draws'] + results[i]['losses'])
+        if results[i]['score'] > results[maxI]['score']:
+            maxI = i
+
+    return results[maxI]['move']
+
+
+
+
+
+
+
 def getUserLoc(game):
 
     validInput = False
@@ -78,8 +142,7 @@ def getUserLoc(game):
             else:
                 print( "Invalid move")
 
-    return x,y
-
+    return (x,y)
 
 def play_a_new_game():
 
@@ -98,20 +161,31 @@ def play_a_new_game():
         if turn == 1:
             #computer turn 
             print("Computer turn.")
-            x,y = getUserLoc(game)
-            game.move((x,y))
+            move = pMCTS(game, False)
+            game.move(move)
             game.print()
             turn = 0
         else:
             #player turn 
             print("Player turn. Enter location as x y")
-            x,y = getUserLoc(game)
-            game.move((x,y))
+            move = getUserLoc(game)
+            #move = pMCTS(game, True)   # for pMCTS vs pMCTS
+            game.move(move)
             game.print()
             turn = 1
-        
-    print(game.get_status())
+  
+    status = game.get_status()
+    if status == 0:
+        print("player wins")
+    if status == 1:
+        print("Comptuer wins")
+    if status == 2:
+        print("Draw")
+
+    return status
 
 if __name__ == '__main__':
-  play_a_new_game()
+    play_a_new_game()
+
+    
 
